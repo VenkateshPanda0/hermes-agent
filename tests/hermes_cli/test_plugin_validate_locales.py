@@ -87,3 +87,13 @@ def test_pack_with_register_function_still_probes(tmp_path):
     assert report.ok, report.failures
     ok, _ = _check(report, "capability probe")
     assert ok
+
+
+def test_yaml_alias_cycle_is_a_reported_failure_not_a_crash(tmp_path):
+    """``a: &x {b: *x}`` is legal YAML that parses to a self-referential mapping (#132006)."""
+    plugin = _pack(tmp_path, core={})
+    (plugin / "locales" / "pl.yaml").write_text("a: &x\n  b: *x\n", encoding="utf-8")
+    report = validate_plugin_dir(plugin)
+    assert not report.ok
+    ok, detail = _check(report, "locale pl")
+    assert not ok and "cyclic reference" in detail and "a.b" in detail
