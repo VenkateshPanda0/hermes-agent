@@ -1065,8 +1065,8 @@ def _docker_env_active() -> bool:
 
 
 def _docker_persistent_active() -> bool:
-    """Docker backend with persistent containers (the default) enabled."""
-    return _docker_env_active() and _tenv("TERMINAL_CONTAINER_PERSISTENT", "true").strip().lower() in _TRUTHY
+    """Docker backend with persistent containers (the default; blank means unset) enabled."""
+    return _docker_env_active() and (_tenv("TERMINAL_CONTAINER_PERSISTENT", "true").strip().lower() or "true") in _TRUTHY
 
 
 def _docker_persistent_sandbox_roots(session_key: str, leaf: str) -> List[Path]:
