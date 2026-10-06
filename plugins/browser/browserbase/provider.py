@@ -12,6 +12,7 @@ from typing import Any, Dict, Optional
 
 from agent.secret_scope import get_secret
 from plugins.browser._common import CloudBrowserProvider
+from utils import is_truthy_value
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,12 @@ _PAID_FEATURE_FALLBACKS = (
                   "Sessions may timeout during long operations."),
     ("proxies", "Proxies unavailable (402), retrying without proxies. "
                 "Bot detection may be less effective."))
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    """Read a BROWSERBASE_* switch with the shared truthy set (1/true/yes/on); blank means *default*."""
+    raw = os.environ.get(name, "").strip()
+    return is_truthy_value(raw) if raw else default
 
 
 class BrowserbaseBrowserProvider(CloudBrowserProvider):
@@ -63,9 +70,9 @@ class BrowserbaseBrowserProvider(CloudBrowserProvider):
 
     def create_session(self, task_id: str) -> Dict[str, object]:
         config = self._get_config()
-        enable_proxies = os.environ.get("BROWSERBASE_PROXIES", "true").lower() != "false"
-        enable_advanced_stealth = os.environ.get("BROWSERBASE_ADVANCED_STEALTH", "false").lower() == "true"
-        enable_keep_alive = os.environ.get("BROWSERBASE_KEEP_ALIVE", "true").lower() != "false"
+        enable_proxies = _env_flag("BROWSERBASE_PROXIES", True)
+        enable_advanced_stealth = _env_flag("BROWSERBASE_ADVANCED_STEALTH", False)
+        enable_keep_alive = _env_flag("BROWSERBASE_KEEP_ALIVE", True)
         custom_timeout_ms = os.environ.get("BROWSERBASE_SESSION_TIMEOUT")
 
         session_config: Dict[str, object] = {"projectId": config["project_id"]}
