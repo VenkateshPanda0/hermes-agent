@@ -20,6 +20,7 @@ from hermes_cli.vercel_auth import describe_vercel_auth
 from hermes_cli.status_auth import (  # renderers wired into _SECTIONS below
     _render_api_keys, _render_apikey_providers, _render_auth_providers, _render_nous_gateway)
 from hermes_constants import OPENROUTER_MODELS_URL
+from utils import is_truthy_value
 
 
 def check_mark(ok: bool) -> str:
@@ -167,9 +168,9 @@ def _render_terminal(ctx):
             value = (os.getenv(var, "") or default) if empty_is_unset else os.getenv(var, default)
             print(f"  {label:<13} {value}")
     elif terminal_env == "vercel_sandbox":
-        persist = os.getenv("TERMINAL_CONTAINER_PERSISTENT")
-        persist_enabled = (bool(terminal_cfg.get("container_persistent", True)) if persist is None
-                           else persist.lower() in {"1", "true", "yes", "on"})
+        persist = (os.getenv("TERMINAL_CONTAINER_PERSISTENT") or "").strip()
+        persist_enabled = (bool(terminal_cfg.get("container_persistent", True)) if not persist
+                           else is_truthy_value(persist))
         auth_status = describe_vercel_auth()
         _kv("Image:", os.getenv('TERMINAL_VERCEL_RUNTIME') or terminal_cfg.get('vercel_runtime')
             or os.getenv('TERMINAL_VERCEL_IMAGE') or terminal_cfg.get('vercel_image') or DEFAULT_VERCEL_IMAGE)
