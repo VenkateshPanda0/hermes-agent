@@ -13,6 +13,7 @@ from hermes_cli.doctor_platform import _system_package_install_cmd
 from hermes_cli.doctor_report import Finding, _fail_and_issue, check_bool, check_info, check_ok, check_warn, doctor_check
 from hermes_cli.vercel_auth import describe_vercel_auth
 from hermes_constants import is_termux as _is_termux
+from utils import is_truthy_value
 from tools.environments.docker import docker_runtime_name, docker_runtime_start_hint, find_docker
 
 
@@ -273,7 +274,7 @@ def _check_vercel_backend(issues: list[str]) -> None:
         _fail_and_issue("Vercel auth not configured", f"({auth_status.label})", "Configure Vercel Sandbox auth with VERCEL_TOKEN, VERCEL_PROJECT_ID, and VERCEL_TEAM_ID", issues)
     for line in auth_status.detail_lines:
         check_info(f"Vercel auth {line}")
-    persistent = os.getenv("TERMINAL_CONTAINER_PERSISTENT", "true").lower() in {"1", "true", "yes", "on"}
+    persistent = is_truthy_value(os.getenv("TERMINAL_CONTAINER_PERSISTENT", "").strip() or "true")
     check_info("Vercel persistence: snapshot filesystem only; live processes do not survive sandbox recreation"
                if persistent else "Vercel persistence: ephemeral filesystem")
 
