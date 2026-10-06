@@ -93,7 +93,11 @@ def _check_locale_file(report, lang_id: str, surface: str, path: Path) -> None:
     if not isinstance(document, dict):
         report.add(label, False, f"{path.name} must be a mapping, got {type(document).__name__}")
         return
-    bad_leaves = non_text_leaves(document)
+    try:
+        bad_leaves = non_text_leaves(document)
+    except ValueError as exc:
+        report.add(label, False, f"{path.name}: {exc}")
+        return
     if bad_leaves:
         report.add(label, False, f"{path.name} has non-text value(s) at: {', '.join(sorted(bad_leaves))}")
         return

@@ -48,24 +48,40 @@ def is_language_id(value: Any) -> bool:
 # ── parsing ───────────────────────────────────────────────────────────────────────────────────
 
 
+def _enter(node: Any, prefix: str, ancestors: frozenset[int]) -> frozenset[int]:
+    """*ancestors* plus *node*; raises ``ValueError`` when *node* is already one of them. A YAML alias to
+    its own ancestor (``a: &x {b: *x}``) is legal YAML that parses to a self-referential mapping, so the
+    walk would never end. Tracking only the current path keeps a shared, non-cyclic alias legal."""
+    if id(node) in ancestors:
+        raise ValueError(f"cyclic reference at {prefix or '<root>'!r}: a YAML alias points at its own ancestor")
+    return ancestors | {id(node)}
+
+
 def flatten(node: Any, prefix: str = "", out: dict[str, str] | None = None) -> dict[str, str]:
     """Nested mapping -> ``{dotted.key: text}``. Non-string, non-mapping leaves are dropped (catalogs are
-    text-only); :func:`non_text_leaves` reports them for the validator."""
+    text-only); :func:`non_text_leaves` reports them for the validator. Raises ``ValueError`` on a cycle."""
     flat: dict[str, str] = {} if out is None else out
-    if isinstance(node, Mapping):
-        for key, value in node.items():
-            flatten(value, f"{prefix}.{key}" if prefix else str(key), flat)
-    elif isinstance(node, str):
-        flat[prefix] = node
+    _flatten_into(node, prefix, flat, frozenset())
     return flat
 
 
-def non_text_leaves(node: Any, prefix: str = "") -> list[str]:
-    """Dotted paths of leaves that are neither text nor a mapping (numbers, lists, booleans, nulls)."""
+def _flatten_into(node: Any, prefix: str, flat: dict[str, str], ancestors: frozenset[int]) -> None:
     if isinstance(node, Mapping):
+        ancestors = _enter(node, prefix, ancestors)
+        for key, value in node.items():
+            _flatten_into(value, f"{prefix}.{key}" if prefix else str(key), flat, ancestors)
+    elif isinstance(node, str):
+        flat[prefix] = node
+
+
+def non_text_leaves(node: Any, prefix: str = "", _ancestors: frozenset[int] = frozenset()) -> list[str]:
+    """Dotted paths of leaves that are neither text nor a mapping (numbers, lists, booleans, nulls).
+    Raises ``ValueError`` on a cycle."""
+    if isinstance(node, Mapping):
+        ancestors = _enter(node, prefix, _ancestors)
         found: list[str] = []
         for key, value in node.items():
-            found.extend(non_text_leaves(value, f"{prefix}.{key}" if prefix else str(key)))
+            found.extend(non_text_leaves(value, f"{prefix}.{key}" if prefix else str(key), ancestors))
         return found
     return [] if isinstance(node, str) else [prefix or "<root>"]
 

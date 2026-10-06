@@ -92,6 +92,17 @@ def test_overlay_only_language_is_supported_and_falls_back_to_english(home):
     assert i18n.supported_languages()[0] == "en"
 
 
+def test_cyclic_overlay_is_dropped_and_shared_alias_still_flattens(home):
+    """A YAML alias to its own ancestor drops that overlay with a warning instead of recursing forever
+    (#132006); an alias reused in two places without a cycle is legal and fills both keys."""
+    (home / "locales" / "de.yaml").write_text("approval: &x\n  denied: *x\n", encoding="utf-8")
+    (home / "locales" / "eo.yaml").write_text("a: &t {denied: Saluton}\napproval: *t\n", encoding="utf-8")
+    i18n.reset_language_cache()
+    assert i18n_layers.overlay_layer(home, "de") == {}
+    assert i18n.t(_KEY, lang="eo") == "Saluton"
+    assert i18n_layers.overlay_layer(home, "eo") == {"a.denied": "Saluton", _KEY: "Saluton"}
+
+
 def test_overlay_is_profile_scoped_across_two_homes(tmp_path, monkeypatch, clean_layers):
     """Home A overlays de; home B does not. A → B → A must never serve A's overlay to B or B's miss to A."""
     from hermes_constants import reset_hermes_home_override, set_hermes_home_override
